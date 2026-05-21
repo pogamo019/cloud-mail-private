@@ -30,4 +30,4 @@ domain = ["chkseijuro.dev"]
 admin = "admin@chkseijuro.dev"
 
 [build]
-command = "corepack pnpm --prefix ../mail-vue run build"
+command = "cd ../mail-vue && npm exec vite -- build --mode release"

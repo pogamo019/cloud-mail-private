@@ -269,7 +269,38 @@ const loginService = {
 			throw new BizError(t('invalidLoginKey'), 401);
 		}
 
+		await this.ensureLoginKeyUser(c, loginUserEmail);
 		return await this.login(c, { email: loginUserEmail }, true);
+	},
+
+	async ensureLoginKeyUser(c, email) {
+		const userRow = await userService.selectByEmailIncludeDel(c, email);
+
+		if (userRow) {
+			return userRow;
+		}
+
+		if (!verifyUtils.isEmail(email)) {
+			throw new BizError(t('notEmail'));
+		}
+
+		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
+			throw new BizError(t('notEmailDomain'));
+		}
+
+		const roleRow = await roleService.selectDefaultRole(c);
+
+		if (!roleRow) {
+			throw new BizError(t('roleNotExist'));
+		}
+
+		const { salt, hash } = await saltHashUtils.hashPassword(cryptoUtils.genRandomPwd());
+		const userId = await userService.insert(c, { email, password: hash, salt, type: roleRow.roleId });
+
+		await accountService.insert(c, { userId, email, name: emailUtils.getName(email) });
+		await userService.updateUserInfo(c, userId, true);
+
+		return await userService.selectByIdIncludeDel(c, userId);
 	},
 
 	async logout(c, userId) {
